@@ -146,9 +146,12 @@ def logout():
     token = data['token']
     usr = verifyAWT(token)
     if verifyAWT(token):
-        if usr['CURRENT'] == 1:
-            logOutUser(usr['username'])
+        logOutUser(usr['username'])
+        return jsonify({'status':'good'}), 200
+    else: 
+        return jsonify({'status':'bad'}), 404
 if __name__ == '__main__':
+
     load_dotenv('vars.env')
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
@@ -163,9 +166,9 @@ if __name__ == '__main__':
     conn.commit()
     conn.close()
     distinct1 = makeUser('asher',  hashlib.sha256('password'.encode()).hexdigest())
-    distinct2= makeUser('Teddy', hashlib.sha256('TeddyPassword'.encode()).hexdigest())
+    distinct2= makeUser('teddy', hashlib.sha256('password'.encode()).hexdigest())
     if distinct1 and distinct2:
         print(f"distinct users created!")
     awt = makeAWT('asher')
-    print(f"awt: {awt}, status: {verifyAWT(awt)}")
+    #print(f"awt: {awt}, status: {verifyAWT(awt)}")
     app.run(debug=True)

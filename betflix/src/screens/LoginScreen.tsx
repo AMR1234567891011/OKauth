@@ -1,40 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useLayoutEffect } from 'react';
 import { Button, TextInput, View, Text, StyleSheet } from 'react-native';
 import GlobalStyles from '../styles/GlobalStyles';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import EncryptedStorage from 'react-native-encrypted-storage';
-import { createHash } from 'react-native-quick-crypto/lib/typescript/src/Hash';
-
 import CryptoJS from 'crypto-js';
+import { storeAWT, getAWT } from '../utils/AWTstore';
 
 function hashString(message: string): string {
   return CryptoJS.SHA256(message).toString(CryptoJS.enc.Hex);
 }
-
-const storeValue = async (value: string) => {
-    try {
-        console.log("storing value:");
-        console.log(value);
-        await EncryptedStorage.setItem(`userToken`, value)
-    } catch (error) {
-        console.log("shit")
-    }
-};
-
-const getValue = async () => {
-    try {
-        const value = await EncryptedStorage.getItem(`userToken`)
-        console.log('stored value');
-        console.log(value)
-        if (value !== null) {
-            return value
-        } else {
-            return null
-        }
-    } catch (error) {~
-        console.log("shit")
-    }
-};
 
 const sendLoginCred = async (username: string, password: string) => {
     try {
@@ -51,7 +23,7 @@ const sendLoginCred = async (username: string, password: string) => {
         const data  = await response.json();
         console.log("Login resposne:", data);
         if (response.ok) {
-            storeValue(data.token)
+            storeAWT(data.token)
             if (await sendAuthToken(data.token)){
                 return true;
             }
@@ -60,9 +32,10 @@ const sendLoginCred = async (username: string, password: string) => {
         console.log("error in login")
     }
 };
+
 const sendAuthToken = async (username: string) => {
     try {
-        const token = await getValue();
+        const token = await getAWT();
         console.log(token);
         const response = await fetch('http://10.0.2.2:5000/token', {
             method: 'POST',
@@ -79,8 +52,16 @@ const sendAuthToken = async (username: string) => {
     } catch (error) {
         console.log("network issue");
     }
-}
+};
+
 const LoginScreen: React.FC<{navigation: any}> = ({ navigation }) => {
+    useLayoutEffect(() => {
+        navigation.setOptions({
+            headerLeft: () => null,  // This removes the back button from the header
+            headerRight: () => null
+        });
+    }, [navigation]);
+    
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(true);
@@ -88,7 +69,7 @@ const LoginScreen: React.FC<{navigation: any}> = ({ navigation }) => {
 
     useEffect(() => {
         const checkForAuthToken = async () => {
-            const userToken = await getValue();
+            const userToken = await getAWT();
             if (userToken !== undefined) {
                 setToken(userToken);
                 console.log(`got a real token from storage woo hoo ${token} : ${userToken}`);
@@ -117,22 +98,23 @@ const LoginScreen: React.FC<{navigation: any}> = ({ navigation }) => {
         return unsub;
     }, [navigation]);
 
-
     const handleLogin = async () => {
         if (await sendLoginCred(username, password)) {
             console.log("got authed after logging in and storing token");
             navigation.navigate("Home");
             return;
         }
-        const userToken = await getValue();
+        const userToken = await getAWT();
         if (userToken !== undefined && userToken !== null){
             const authed = await sendAuthToken(userToken);
             if (authed){
                 navigation.navigate("Home");
+                return
             }
         }
 
     };
+
     if (loading){
         return (<Text>Loading ...</Text>);
     } else {
